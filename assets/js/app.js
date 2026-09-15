@@ -15,12 +15,17 @@
   /* ---------- mobile drawer ---------- */
   var burger = $('#burger');
   var mnav = $('#mnav');
+  // while the drawer is open, the page under it must not take focus
+  function setInert(on) {
+    ['main', '.ftr'].forEach(function (sel) { var el = $(sel); if (el) el.inert = on; });
+  }
   function closeNav() {
     if (!burger || !mnav) return;
     burger.setAttribute('aria-expanded', 'false');
     burger.setAttribute('aria-label', 'Atvērt izvēlni');
     mnav.hidden = true;
     d.body.style.overflow = '';
+    setInert(false);
   }
   if (burger && mnav) {
     burger.addEventListener('click', function () {
@@ -29,8 +34,15 @@
       burger.setAttribute('aria-label', 'Aizvērt izvēlni');
       mnav.hidden = false;
       d.body.style.overflow = 'hidden';
+      setInert(true);
     });
     mnav.addEventListener('click', function (e) { if (e.target.closest('a')) closeNav(); });
+    // header links (Pieteikums, phone, logo) also leave the drawer
+    var hdr = $('.hdr');
+    if (hdr) hdr.addEventListener('click', function (e) {
+      if (e.target.closest('a') && burger.getAttribute('aria-expanded') === 'true') closeNav();
+    });
+    window.addEventListener('hashchange', closeNav);
     d.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && burger.getAttribute('aria-expanded') === 'true') { closeNav(); burger.focus(); }
     });
@@ -38,13 +50,30 @@
   }
 
   /* ---------- the gate in the hero: remove the drawing once it has opened ---------- */
+  // The drawing waits for the photo: it opens only over a decoded image.
+  // If the photo is not ready within 1.5 s the drawing is simply removed.
   $$('.gate').forEach(function (g) {
-    var finish = function () { g.classList.add('is-done'); };
+    var done = false;
+    var finish = function () { if (!done) { done = true; g.classList.add('is-done'); } };
     if (reduce) { finish(); return; }
     var parts = $$('.gate__leaf, i', g);
     var last = parts[parts.length - 1];
     if (last) last.addEventListener('animationend', finish, { once: true });
-    setTimeout(finish, 3600); // failsafe: the photo is never left covered
+    var photo = g.parentNode ? $('img', g.parentNode) : null;
+    var go = function () {
+      if (done) return;
+      g.classList.add('is-go');
+      setTimeout(finish, 3200);
+    };
+    var late = setTimeout(finish, 1500);
+    var ready = function () { clearTimeout(late); go(); };
+    if (!photo) { ready(); return; }
+    if (photo.complete && photo.naturalWidth) {
+      (photo.decode ? photo.decode() : Promise.resolve()).then(ready, ready);
+    } else {
+      photo.addEventListener('load', function () { (photo.decode ? photo.decode() : Promise.resolve()).then(ready, ready); }, { once: true });
+      photo.addEventListener('error', finish, { once: true });
+    }
   });
 
   /* ---------- counters (numbers come from the zl.lv company card) ---------- */
@@ -114,8 +143,9 @@
         else if (act === 'next') show(idx + 1);
         else if (act === 'close') closeLb();
         else if (act === 'fs') {
-          if (d.fullscreenElement) d.exitFullscreen();
-          else if (lb.requestFullscreen) lb.requestFullscreen().catch(function () {});
+          // a <dialog> itself cannot go full screen; the page can, and the modal stays on top
+          if (d.fullscreenElement) d.exitFullscreen().catch(function () {});
+          else d.documentElement.requestFullscreen().catch(function () {});
         }
         return;
       }
@@ -125,11 +155,11 @@
       if (e.key === 'ArrowRight') { show(idx + 1); e.preventDefault(); }
       else if (e.key === 'ArrowLeft') { show(idx - 1); e.preventDefault(); }
     });
-    if (fsBtn && !(lb.requestFullscreen)) fsBtn.hidden = true;
+    if (fsBtn && !(d.fullscreenEnabled && d.documentElement.requestFullscreen)) fsBtn.hidden = true;
     d.addEventListener('fullscreenchange', function () {
       if (!fsBtn) return;
       var on = !!d.fullscreenElement;
-      fsBtn.setAttribute('aria-label', on ? 'Iziet no pilnekrāna' : 'Pilnekrāna režīms');
+      fsBtn.setAttribute('aria-label', on ? 'Iziet no pilnekrāna režīma' : 'Pilnekrāna režīms');
     });
     var x0 = null, y0 = null;
     lb.addEventListener('touchstart', function (e) {
@@ -196,13 +226,26 @@
   if (veids) {
     var q = /[?&]veids=([a-z-]+)/.exec(location.search);
     if (q) selectSlug(q[1]);
-    [veids, fW, fH].forEach(function (el) {
-      if (!el) return;
-      el.addEventListener('input', function () { applySizeLabels(); updateSummary(); });
-      el.addEventListener('change', function () { applySizeLabels(); updateSummary(); });
-    });
+    var unit = (SIZE[currentSlug()] || SIZE.def).unit;
+    var onType = function () {
+      // the colour choice belongs to lifting gates only
+      if (izvele && izvele.value && currentSlug() !== 'pacelamie-varti') izvele.value = '';
+      // sizes typed in mm make no sense in m and back: clear them when the unit changes
+      var u = (SIZE[currentSlug()] || SIZE.def).unit;
+      if (u !== unit) { if (fW) fW.value = ''; if (fH) fH.value = ''; unit = u; }
+      applySizeLabels();
+      updateSummary();
+    };
+    veids.addEventListener('change', onType);
+    [fW, fH].forEach(function (el) { if (el) el.addEventListener('input', updateSummary); });
     applySizeLabels();
     updateSummary();
+  }
+
+  // after a sent request, any way back to the form shows the form again
+  function reopenForm() {
+    var done = $('#done');
+    if (frm && frm.hidden && done) { done.hidden = true; frm.hidden = false; }
   }
 
   // any "request for this type" link fills the type in on the way to the form
@@ -210,9 +253,9 @@
     var a = e.target.closest('a[data-veids]');
     if (!a || !veids) return;
     if (a.getAttribute('href').charAt(0) !== '#') return;
+    reopenForm();
     selectSlug(a.getAttribute('data-veids'));
-    applySizeLabels();
-    updateSummary();
+    onType();
     if (fW) setTimeout(function () { fW.focus({ preventScroll: true }); }, reduce ? 0 : 600);
   });
 
@@ -267,21 +310,26 @@
       var text = lines.join('\n');
 
       if (via === 'mail') {
-        var subj = 'Pieteikums: ' + (veids && veids.value ? veids.value : 'vārti');
+        var subj = 'Pieteikums no mājaslapas' + (veids && veids.value ? ': ' + veids.value : '');
         location.href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(text);
-        if (doneT) doneT.textContent = 'Atvērām e-pasta programmu ar sagatavotu vēstuli.';
-        if (doneP) doneP.textContent = 'Pārbaudiet vēstuli un nospiediet «Sūtīt». Ja e-pasta programma neatvērās, zvaniet vai rakstiet WhatsApp.';
+        if (doneT) doneT.textContent = 'E-pasta programmā ir sagatavota vēstule.';
+        if (doneP) doneP.textContent = 'Pārbaudiet vēstuli un nospiediet „Sūtīt“. Ja e-pasta programma neatvērās, zvaniet vai rakstiet WhatsApp.';
       } else {
-        var w = window.open('https://wa.me/' + PHONE_WA + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
-        if (doneT) doneT.textContent = w === null ? 'WhatsApp neatvērās.' : 'Atvērām WhatsApp ar sagatavotu ziņu.';
-        if (doneP) doneP.textContent = w === null
-          ? 'Pārlūks bloķēja jaunu logu. Zvaniet vai nosūtiet pieteikumu e-pastā.'
-          : 'Pārbaudiet ziņu un nospiediet «Sūtīt». Ja WhatsApp neatvērās, zvaniet vai rakstiet e-pastu.';
+        // no 'noopener' feature here: with it window.open always returns null
+        var w = window.open('https://wa.me/' + PHONE_WA + '?text=' + encodeURIComponent(text), '_blank');
+        if (w) { try { w.opener = null; } catch (x) {} }
+        if (doneT) doneT.textContent = w ? 'WhatsApp ir sagatavota ziņa.' : 'WhatsApp neatvērās.';
+        if (doneP) doneP.textContent = w
+          ? 'Pārbaudiet ziņu un nosūtiet to. Ja WhatsApp neatvērās, zvaniet vai rakstiet pa e-pastu.'
+          : 'Pārlūkprogramma bloķēja jauno logu. Zvaniet vai nosūtiet pieteikumu pa e-pastu.';
       }
       frm.hidden = true;
       if (done) {
         done.hidden = false;
         done.setAttribute('tabindex', '-1');
+        // the form above just collapsed: bring the confirmation into view
+        var section = $('#pieteikums');
+        (section || done).scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
         done.focus({ preventScroll: true });
       }
       if (status) status.textContent = doneT ? doneT.textContent : '';
@@ -307,6 +355,12 @@
     var render = function () {
       var kind = val('p-veids'), col = val('p-krasa'), surf = val('p-virsma'), win = $('#p-logi', pick);
       var pano = kind && kind.value === 'panorama';
+      // wood finishes are named for panel doors only; panoramic frames stay in RAL colours
+      $$('input[data-wood]', pick).forEach(function (i) { i.disabled = pano; });
+      if (pano && col && col.hasAttribute('data-wood')) {
+        var def = $('#pk-7016', pick);
+        if (def) { def.checked = true; col = def; }
+      }
       svg.style.setProperty('--door', col ? col.getAttribute('data-fill') : '#383E42');
       svg.setAttribute('data-kind', kind ? kind.value : 'parastie');
       svg.setAttribute('data-surf', surf ? surf.value : 'rievots');
@@ -327,9 +381,10 @@
     if (add) {
       add.addEventListener('click', function () {
         var txt = render();
+        reopenForm();
         selectSlug('pacelamie-varti');
+        onType();
         if (izvele) izvele.value = txt;
-        applySizeLabels();
         updateSummary();
         var target = $('#pieteikums');
         if (target) target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
