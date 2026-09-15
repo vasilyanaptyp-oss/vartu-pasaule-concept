@@ -1,16 +1,28 @@
 /* Vārtu pasaule - progressive enhancement only.
    Every page reads and works without this file: links open photos, the
-   phone and e-mail are plain links, and the form falls back to its note. */
+   phone is a plain link, the e-mail shows as name[at]domain, and the form
+   falls back to its note. */
 (function () {
   'use strict';
 
   var d = document;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var PHONE_WA = '37129146306';
-  var MAIL = 'vartupasaule@gmail.com';
 
   function $(sel, root) { return (root || d).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || d).querySelectorAll(sel)); }
+
+  /* ---------- e-mail: kept out of the HTML text so scrapers do not collect it ---------- */
+  // data-m holds the address reversed and base64-encoded; here it becomes a mailto link
+  function unmail(code) { try { return atob(code).split('').reverse().join(''); } catch (x) { return ''; } }
+  var MAIL = '';
+  $$('[data-m]').forEach(function (a) {
+    var m = unmail(a.getAttribute('data-m'));
+    if (!m) return;
+    MAIL = MAIL || m;
+    a.href = 'mailto:' + m;
+    a.textContent = m;
+  });
 
   /* ---------- mobile drawer ---------- */
   var burger = $('#burger');
@@ -284,6 +296,59 @@
       b.addEventListener('click', function () { via = b.value; });
     });
 
+    var showDone = function () {
+      frm.hidden = true;
+      if (done) {
+        done.hidden = false;
+        done.setAttribute('tabindex', '-1');
+        // the form above just collapsed: bring the confirmation into view
+        var section = $('#pieteikums');
+        (section || done).scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        done.focus({ preventScroll: true });
+      }
+      if (status) status.textContent = doneT ? doneT.textContent : '';
+    };
+
+    // vartupasaule.lv: "Nosūtīt pa e-pastu" sends through the site's send.php
+    var endpoint = frm.getAttribute('data-endpoint');
+    var opened = Date.now();
+    var sending = false;
+    var sendErr = $('#e-send');
+    var sendToServer = function () {
+      if (sending) return;
+      sending = true;
+      var btn = $('button[name="via"][value="mail"]', frm);
+      var label = btn ? btn.lastChild : null;
+      var was = label ? label.nodeValue : '';
+      if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+      if (label) label.nodeValue = 'Sūta…';
+      if (sendErr) sendErr.hidden = true;
+      var fd = new FormData(frm);
+      fd.set('veids', veids && veids.value ? veids.value : '');
+      fd.set('izmers', sizeText() || '');
+      fd.set('t', String(Date.now() - opened));
+      var ctrl = window.AbortController ? new AbortController() : null;
+      var tmo = setTimeout(function () { if (ctrl) ctrl.abort(); }, 20000);
+      fetch(endpoint, { method: 'POST', body: fd, credentials: 'same-origin', signal: ctrl ? ctrl.signal : undefined })
+        .then(function (r) { return r.json().then(function (j) { return r.ok && j && j.ok === true; }, function () { return false; }); })
+        .catch(function () { return false; })
+        .then(function (ok) {
+          clearTimeout(tmo);
+          sending = false;
+          if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+          if (label) label.nodeValue = was;
+          if (ok) {
+            if (doneT) doneT.textContent = 'Pieteikums nosūtīts';
+            if (doneP) doneP.textContent = 'Mēs ar jums sazināsimies. Steidzamā gadījumā zvaniet +371\u00a029146306.';
+            showDone();
+          } else {
+            var msgErr = 'Neizdevās nosūtīt pieteikumu. Mēģiniet vēlreiz vai zvaniet +371\u00a029146306.';
+            if (sendErr) { sendErr.textContent = msgErr; sendErr.hidden = false; }
+            if (status) status.textContent = msgErr;
+          }
+        });
+    };
+
     frm.addEventListener('submit', function (e) {
       e.preventDefault();
       if (e.submitter && e.submitter.value) via = e.submitter.value;
@@ -309,30 +374,25 @@
       if (msg && msg.value.trim()) lines.push('Piezīmes: ' + msg.value.trim());
       var text = lines.join('\n');
 
+      if (via === 'mail' && endpoint && window.fetch && window.FormData) {
+        sendToServer();
+        return;
+      }
       if (via === 'mail') {
-        var subj = 'Pieteikums no mājaslapas' + (veids && veids.value ? ': ' + veids.value : '');
+        var subj = 'Pieteikums no mājaslapas' + (veids && veids.value ? ': ' + veids.value.charAt(0).toLowerCase() + veids.value.slice(1) : '');
         location.href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(text);
-        if (doneT) doneT.textContent = 'E-pasta programmā ir sagatavota vēstule.';
+        if (doneT) doneT.textContent = 'E-pasta programmā ir sagatavota vēstule';
         if (doneP) doneP.textContent = 'Pārbaudiet vēstuli un nospiediet „Sūtīt“. Ja e-pasta programma neatvērās, zvaniet vai rakstiet WhatsApp.';
       } else {
         // no 'noopener' feature here: with it window.open always returns null
         var w = window.open('https://wa.me/' + PHONE_WA + '?text=' + encodeURIComponent(text), '_blank');
         if (w) { try { w.opener = null; } catch (x) {} }
-        if (doneT) doneT.textContent = w ? 'WhatsApp ir sagatavota ziņa.' : 'WhatsApp neatvērās.';
+        if (doneT) doneT.textContent = w ? 'WhatsApp ir sagatavota ziņa' : 'WhatsApp neatvērās';
         if (doneP) doneP.textContent = w
           ? 'Pārbaudiet ziņu un nosūtiet to. Ja WhatsApp neatvērās, zvaniet vai rakstiet pa e-pastu.'
           : 'Pārlūkprogramma bloķēja jauno logu. Zvaniet vai nosūtiet pieteikumu pa e-pastu.';
       }
-      frm.hidden = true;
-      if (done) {
-        done.hidden = false;
-        done.setAttribute('tabindex', '-1');
-        // the form above just collapsed: bring the confirmation into view
-        var section = $('#pieteikums');
-        (section || done).scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-        done.focus({ preventScroll: true });
-      }
-      if (status) status.textContent = doneT ? doneT.textContent : '';
+      showDone();
     });
 
     var again = $('#again');

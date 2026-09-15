@@ -1,0 +1,3 @@
+# PHP mail handler: only in the build for vartupasaule.lv (python build.py --final)
+send.php
+server*.log

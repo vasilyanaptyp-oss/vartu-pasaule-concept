@@ -136,7 +136,13 @@ button{font:inherit;color:inherit}
   min-height:var(--hdr-h);display:flex;align-items:center;gap:clamp(12px,2vw,32px);
 }
 .brand{display:flex;align-items:center;gap:12px;min-height:44px;text-decoration:none;flex:0 1 auto;min-width:0}
-.brand__logo{height:52px;width:auto;flex:0 0 auto}
+.brand__logo{height:40px;width:auto;flex:0 0 auto}
+@media (max-width:1180px){.brand__logo{height:44px}}
+@media (max-width:760px){.brand__logo{height:32px}}
+/* with the horizontal logo and eight menu items the company line has no room next to the desktop menu */
+@media (min-width:1181px){.brand__sub{display:none}}
+@media (min-width:1181px) and (max-width:1279px){.hdr .nav{gap:12px}}
+@media (max-width:340px){.hdr__act .tel{display:none}}
 .brand__sub{font:500 11.5px/1.35 var(--f-b);color:var(--ink-3);white-space:nowrap;padding-left:12px;border-left:1px solid var(--line)}
 
 .nav{display:flex;align-items:center;gap:clamp(10px,1.4vw,24px);margin-inline-start:auto}
@@ -190,7 +196,7 @@ button{font:inherit;color:inherit}
   .tel svg{width:21px;height:21px;flex-basis:21px}
   .hdr__cta{padding:11px 12px;font-size:13.5px}
 }
-@media (max-width:380px){.brand__logo{height:44px}.hdr__cta{padding:11px 10px;font-size:13px}}
+@media (max-width:380px){.brand__logo{height:28px}.hdr__cta{padding:11px 10px;font-size:13px}}
 
 /* ============================ BREADCRUMBS =============================== */
 .crumbs{padding-top:clamp(14px,2vw,22px)}
@@ -611,3 +617,6 @@ button{font:inherit;color:inherit}
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
+
+/* enquiry form on the company server: bot trap field, never shown */
+.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
