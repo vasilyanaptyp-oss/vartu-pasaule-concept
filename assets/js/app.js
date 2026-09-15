@@ -273,7 +273,7 @@
 
   if (frm) {
     var name = $('#f-name'), tel = $('#f-tel'), mail = $('#f-mail'), msg = $('#f-msg');
-    var status = $('#frm-status'), done = $('#done'), doneT = $('#done-t'), doneP = $('#done-p');
+    var status = $('#frm-status'), done = $('#done'), doneT = $('#done-t'), doneP = $('#done-p'), sendErr = $('#e-send');
     var mailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     var checks = [
       [name, $('#e-name'), function () { return !name.value.trim(); }],
@@ -296,7 +296,12 @@
       b.addEventListener('click', function () { via = b.value; });
     });
 
+    var again = $('#again');
+    var sentToServer = false;
     var showDone = function () {
+      if (sendErr) sendErr.hidden = true;
+      // an enquiry that already reached the company is not edited but started anew
+      if (again) again.textContent = sentToServer ? 'Jauns pieteikums' : 'Labot pieteikumu';
       frm.hidden = true;
       if (done) {
         done.hidden = false;
@@ -313,14 +318,14 @@
     var endpoint = frm.getAttribute('data-endpoint');
     var opened = Date.now();
     var sending = false;
-    var sendErr = $('#e-send');
     var sendToServer = function () {
       if (sending) return;
       sending = true;
       var btn = $('button[name="via"][value="mail"]', frm);
       var label = btn ? btn.lastChild : null;
       var was = label ? label.nodeValue : '';
-      if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+      // not .disabled: a disabled button drops keyboard focus to <body>; `sending` blocks repeats
+      if (btn) { btn.setAttribute('aria-disabled', 'true'); btn.setAttribute('aria-busy', 'true'); }
       if (label) label.nodeValue = 'Sūta…';
       if (sendErr) sendErr.hidden = true;
       var fd = new FormData(frm);
@@ -329,17 +334,18 @@
       fd.set('t', String(Date.now() - opened));
       var ctrl = window.AbortController ? new AbortController() : null;
       var tmo = setTimeout(function () { if (ctrl) ctrl.abort(); }, 20000);
-      fetch(endpoint, { method: 'POST', body: fd, credentials: 'same-origin', signal: ctrl ? ctrl.signal : undefined })
+      Promise.resolve().then(function () { return fetch(endpoint, { method: 'POST', body: fd, credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: ctrl ? ctrl.signal : undefined }); })
         .then(function (r) { return r.json().then(function (j) { return r.ok && j && j.ok === true; }, function () { return false; }); })
         .catch(function () { return false; })
         .then(function (ok) {
           clearTimeout(tmo);
           sending = false;
-          if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+          if (btn) { btn.removeAttribute('aria-disabled'); btn.removeAttribute('aria-busy'); }
           if (label) label.nodeValue = was;
           if (ok) {
             if (doneT) doneT.textContent = 'Pieteikums nosūtīts';
             if (doneP) doneP.textContent = 'Mēs ar jums sazināsimies. Steidzamā gadījumā zvaniet +371\u00a029146306.';
+            sentToServer = true;
             showDone();
           } else {
             var msgErr = 'Neizdevās nosūtīt pieteikumu. Mēģiniet vēlreiz vai zvaniet +371\u00a029146306.';
@@ -351,6 +357,8 @@
 
     frm.addEventListener('submit', function (e) {
       e.preventDefault();
+      // while the e-mail is on its way, neither button starts a second route
+      if (sending) return;
       if (e.submitter && e.submitter.value) via = e.submitter.value;
       var first = null;
       checks.forEach(function (c) {
@@ -374,7 +382,8 @@
       if (msg && msg.value.trim()) lines.push('Piezīmes: ' + msg.value.trim());
       var text = lines.join('\n');
 
-      if (via === 'mail' && endpoint && window.fetch && window.FormData) {
+      sentToServer = false;
+      if (via === 'mail' && endpoint && window.fetch && window.FormData && FormData.prototype.set) {
         sendToServer();
         return;
       }
@@ -395,11 +404,12 @@
       showDone();
     });
 
-    var again = $('#again');
     if (again && done) {
       again.addEventListener('click', function () {
+        if (sentToServer) { frm.reset(); if (izvele) izvele.value = ''; onType(); updateSummary(); sentToServer = false; }
         done.hidden = true;
         frm.hidden = false;
+        if (sendErr) sendErr.hidden = true;
         if (status) status.textContent = '';
         if (name) name.focus();
       });

@@ -620,3 +620,8 @@ button{font:inherit;color:inherit}
 
 /* enquiry form on the company server: bot trap field, never shown */
 .hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+/* result of a form post without JavaScript (send.php redirects to one of these anchors) */
+.nojs-msg{display:none;scroll-margin-top:calc(var(--hdr-h) + 16px);margin:0 0 16px;padding:12px 14px;border-left:4px solid var(--y);background:#fff;font-weight:600}
+.nojs-msg--err{border-left-color:#B3261E}
+.nojs-msg:target{display:block}
+.frm .btn[aria-disabled="true"]{opacity:.7;cursor:progress}
