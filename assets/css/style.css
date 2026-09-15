@@ -433,7 +433,7 @@ button{font:inherit;color:inherit}
   /* on phones the drawing stays under the header while the options scroll past */
   .pick__stage{position:sticky;top:var(--hdr-h);z-index:3;padding:8px;box-shadow:0 10px 18px -14px rgba(0,0,0,.4)}
   .pick__svg{max-height:30svh;width:auto;max-width:100%;margin:0 auto}
-  .pick__cap{margin-top:6px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pick__cap{margin-top:6px;font-size:13px;line-height:1.4;min-height:2.8em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 }
 
 /* ============================ AUTOMATION: WAYS TO OPEN ================== */
