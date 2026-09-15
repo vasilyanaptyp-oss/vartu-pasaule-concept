@@ -1,16 +1,20 @@
-/* Vārtu pasaule concept - progressive enhancement only.
-   Nothing here is required to read the page: reveals are handled inline
-   with a hard failsafe, and every section renders without JavaScript. */
+/* Vārtu pasaule - progressive enhancement only.
+   Every page reads and works without this file: links open photos, the
+   phone and e-mail are plain links, and the form falls back to its note. */
 (function () {
   'use strict';
 
   var d = document;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var PHONE_WA = '37129146306';
+  var MAIL = 'vartupasaule@gmail.com';
+
+  function $(sel, root) { return (root || d).querySelector(sel); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || d).querySelectorAll(sel)); }
 
   /* ---------- mobile drawer ---------- */
-  var burger = d.getElementById('burger');
-  var mnav = d.getElementById('mnav');
-
+  var burger = $('#burger');
+  var mnav = $('#mnav');
   function closeNav() {
     if (!burger || !mnav) return;
     burger.setAttribute('aria-expanded', 'false');
@@ -18,158 +22,230 @@
     mnav.hidden = true;
     d.body.style.overflow = '';
   }
-  function openNav() {
-    burger.setAttribute('aria-expanded', 'true');
-    burger.setAttribute('aria-label', 'Aizvērt izvēlni');
-    mnav.hidden = false;
-    d.body.style.overflow = 'hidden';
-  }
   if (burger && mnav) {
     burger.addEventListener('click', function () {
-      if (burger.getAttribute('aria-expanded') === 'true') closeNav(); else openNav();
+      if (burger.getAttribute('aria-expanded') === 'true') { closeNav(); return; }
+      burger.setAttribute('aria-expanded', 'true');
+      burger.setAttribute('aria-label', 'Aizvērt izvēlni');
+      mnav.hidden = false;
+      d.body.style.overflow = 'hidden';
     });
-    mnav.addEventListener('click', function (e) {
-      if (e.target.closest('a')) closeNav();
-    });
+    mnav.addEventListener('click', function (e) { if (e.target.closest('a')) closeNav(); });
     d.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && burger.getAttribute('aria-expanded') === 'true') {
-        closeNav();
-        burger.focus();
-      }
+      if (e.key === 'Escape' && burger.getAttribute('aria-expanded') === 'true') { closeNav(); burger.focus(); }
     });
-    window.addEventListener('resize', function () {
-      if (window.innerWidth > 1060) closeNav();
-    });
+    window.addEventListener('resize', function () { if (window.innerWidth > 1180) closeNav(); });
   }
 
-  /* ---------- active section in the nav ---------- */
-  var navLinks = Array.prototype.slice.call(d.querySelectorAll('.nav a[href^="#"]'));
-  if (navLinks.length && 'IntersectionObserver' in window) {
-    var map = {}, targets = [];
-    navLinks.forEach(function (a) {
-      var el = d.getElementById(a.getAttribute('href').slice(1));
-      // only whole sections drive the active state; in-page tile anchors do not
-      if (el && el.tagName === 'SECTION') { map[el.id] = a; targets.push(el); }
-    });
-    var sio = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        navLinks.forEach(function (a) { a.classList.remove('is-on'); });
-        var a = map[en.target.id];
-        if (a) a.classList.add('is-on');
-      });
-    }, { rootMargin: '-25% 0px -68% 0px' });
-    targets.forEach(function (t) { sio.observe(t); });
-  }
+  /* ---------- the gate in the hero: remove the drawing once it has opened ---------- */
+  $$('.gate').forEach(function (g) {
+    var finish = function () { g.classList.add('is-done'); };
+    if (reduce) { finish(); return; }
+    var parts = $$('.gate__leaf, i', g);
+    var last = parts[parts.length - 1];
+    if (last) last.addEventListener('animationend', finish, { once: true });
+    setTimeout(finish, 3600); // failsafe: the photo is never left covered
+  });
 
-  /* ---------- counters (all three numbers come from the zl.lv card) ------ */
-  var nums = Array.prototype.slice.call(d.querySelectorAll('.num'));
+  /* ---------- counters (numbers come from the zl.lv company card) ---------- */
+  var nums = $$('.num[data-to]');
   if (nums.length && !reduce && 'IntersectionObserver' in window) {
-    var run = function (el) {
-      var to = parseFloat(el.getAttribute('data-to'));
-      if (isNaN(to)) return;
-      var dur = 1000, t0 = null;
-      var step = function (ts) {
-        if (t0 === null) t0 = ts;
-        var p = Math.min((ts - t0) / dur, 1);
-        var eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.round(to * eased);
-        if (p < 1) requestAnimationFrame(step);
-        else el.textContent = to;
-      };
-      requestAnimationFrame(step);
-    };
     var nio = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
-        if (en.isIntersecting) { run(en.target); nio.unobserve(en.target); }
+        if (!en.isIntersecting) return;
+        nio.unobserve(en.target);
+        var el = en.target, to = parseFloat(el.getAttribute('data-to')), t0 = null;
+        var step = function (ts) {
+          if (t0 === null) t0 = ts;
+          var p = Math.min((ts - t0) / 1000, 1);
+          el.textContent = p < 1 ? Math.round(to * (1 - Math.pow(1 - p, 3))) : to;
+          if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
       });
     }, { threshold: 0.5 });
     nums.forEach(function (n) { nio.observe(n); });
   }
 
-  /* ---------- "Pieteikums šim veidam" preselects the gate type ---------- */
-  var veids = d.getElementById('f-veids');
+  /* ---------- photo viewer: the whole photo, full screen, arrows and swipe ---------- */
+  var lb = $('#lb');
+  if (lb && typeof lb.showModal === 'function') {
+    var lbImg = $('.lb__img', lb), lbN = $('.lb__n', lb), lbCap = $('.lb__cap', lb);
+    var fsBtn = $('[data-lb="fs"]', lb);
+    var list = [], idx = 0, opener = null;
+
+    var show = function (i) {
+      idx = (i + list.length) % list.length;
+      var a = list[idx];
+      lbImg.src = a.getAttribute('href');
+      lbImg.alt = a.getAttribute('data-cap') || '';
+      lbCap.textContent = a.getAttribute('data-cap') || '';
+      lbN.textContent = (idx + 1) + ' / ' + list.length;
+      // warm the neighbours so arrows feel instant
+      [idx + 1, idx - 1].forEach(function (j) {
+        var n = list[(j + list.length) % list.length];
+        if (n) { var im = new Image(); im.src = n.getAttribute('href'); }
+      });
+    };
+    var closeLb = function () {
+      if (d.fullscreenElement && d.exitFullscreen) d.exitFullscreen().catch(function () {});
+      lb.close();
+    };
+
+    d.addEventListener('click', function (e) {
+      var a = e.target.closest('.gal__a');
+      if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      var group = a.closest('[data-gal]');
+      list = $$('.gal__a', group || d);
+      e.preventDefault();
+      opener = a;
+      show(list.indexOf(a));
+      lb.showModal();
+    });
+    lb.addEventListener('close', function () {
+      lbImg.removeAttribute('src');
+      if (opener) opener.focus();
+    });
+    lb.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-lb]');
+      if (b) {
+        var act = b.getAttribute('data-lb');
+        if (act === 'prev') show(idx - 1);
+        else if (act === 'next') show(idx + 1);
+        else if (act === 'close') closeLb();
+        else if (act === 'fs') {
+          if (d.fullscreenElement) d.exitFullscreen();
+          else if (lb.requestFullscreen) lb.requestFullscreen().catch(function () {});
+        }
+        return;
+      }
+      if (e.target === lb || e.target.classList.contains('lb__stage')) closeLb();
+    });
+    lb.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') { show(idx + 1); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft') { show(idx - 1); e.preventDefault(); }
+    });
+    if (fsBtn && !(lb.requestFullscreen)) fsBtn.hidden = true;
+    d.addEventListener('fullscreenchange', function () {
+      if (!fsBtn) return;
+      var on = !!d.fullscreenElement;
+      fsBtn.setAttribute('aria-label', on ? 'Iziet no pilnekrāna' : 'Pilnekrāna režīms');
+    });
+    var x0 = null, y0 = null;
+    lb.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) { x0 = null; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    }, { passive: true });
+    lb.addEventListener('touchend', function (e) {
+      if (x0 === null) return;
+      var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) show(idx + (dx < 0 ? 1 : -1));
+      x0 = null;
+    }, { passive: true });
+  }
+
+  /* ---------- request form: builds a WhatsApp message or an e-mail ---------- */
+  var frm = $('#frm');
+  var veids = $('#f-veids');
+  var fW = $('#f-w'), fH = $('#f-h');
+  var summary = $('#summary');
+  var izvele = $('#f-izvele');
+
+  var SIZE = {
+    def: { legend: 'Ailes izmērs, mm', w: 'Platums', h: 'Augstums', pw: '3000', ph: '2400', unit: 'mm' },
+    zogi: { legend: 'Žoga izmērs, m', w: 'Garums', h: 'Augstums', pw: '30', ph: '1,5', unit: 'm' }
+  };
+  function currentSlug() {
+    if (!veids) return '';
+    var o = veids.options[veids.selectedIndex];
+    return o ? (o.getAttribute('data-slug') || '') : '';
+  }
+  function applySizeLabels() {
+    var s = SIZE[currentSlug()] || SIZE.def;
+    var lg = $('#l-size'), lw = $('#l-w'), lh = $('#l-h');
+    if (lg) lg.textContent = s.legend;
+    if (lw) lw.textContent = s.w;
+    if (lh) lh.textContent = s.h;
+    if (fW) fW.placeholder = s.pw;
+    if (fH) fH.placeholder = s.ph;
+  }
+  function sizeText() {
+    var s = SIZE[currentSlug()] || SIZE.def;
+    var w = fW && fW.value.trim(), h = fH && fH.value.trim();
+    if (w && h) return w + ' × ' + h + ' ' + s.unit;
+    if (w) return s.w.toLowerCase() + ' ' + w + ' ' + s.unit;
+    if (h) return s.h.toLowerCase() + ' ' + h + ' ' + s.unit;
+    return '';
+  }
+  function updateSummary() {
+    if (!summary) return;
+    var parts = [veids && veids.value ? veids.value : 'veids nav izvēlēts'];
+    var st = sizeText();
+    if (st) parts.push(st);
+    if (izvele && izvele.value) parts.push(izvele.value);
+    summary.textContent = 'Pieteikums: ' + parts.join(', ');
+  }
+  function selectSlug(slug) {
+    if (!veids || !slug) return false;
+    for (var i = 0; i < veids.options.length; i++) {
+      if (veids.options[i].getAttribute('data-slug') === slug) { veids.selectedIndex = i; return true; }
+    }
+    return false;
+  }
+
+  if (veids) {
+    var q = /[?&]veids=([a-z-]+)/.exec(location.search);
+    if (q) selectSlug(q[1]);
+    [veids, fW, fH].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('input', function () { applySizeLabels(); updateSummary(); });
+      el.addEventListener('change', function () { applySizeLabels(); updateSummary(); });
+    });
+    applySizeLabels();
+    updateSummary();
+  }
+
+  // any "request for this type" link fills the type in on the way to the form
   d.addEventListener('click', function (e) {
     var a = e.target.closest('a[data-veids]');
     if (!a || !veids) return;
-    var want = a.getAttribute('data-veids');
-    for (var i = 0; i < veids.options.length; i++) {
-      if (veids.options[i].value === want || veids.options[i].text === want) {
-        veids.selectedIndex = i;
-        break;
-      }
-    }
+    if (a.getAttribute('href').charAt(0) !== '#') return;
+    selectSlug(a.getAttribute('data-veids'));
+    applySizeLabels();
     updateSummary();
-    var w = d.getElementById('f-w');
-    if (w) setTimeout(function () { w.focus({ preventScroll: true }); }, 520);
+    if (fW) setTimeout(function () { fW.focus({ preventScroll: true }); }, reduce ? 0 : 600);
   });
-
-  /* ---------- live summary: the thing a catalogue listing cannot do ----- */
-  var summary = d.getElementById('summary');
-  var fW = d.getElementById('f-w');
-  var fH = d.getElementById('f-h');
-
-  function updateSummary() {
-    if (!summary) return;
-    var v = veids && veids.value ? veids.value : '';
-    var w = fW && fW.value ? parseInt(fW.value, 10) : null;
-    var h = fH && fH.value ? parseInt(fH.value, 10) : null;
-    var parts = [];
-    parts.push(v ? v : 'veids nav izvēlēts');
-    if (w && h) parts.push(w + ' × ' + h + ' mm');
-    else if (w) parts.push('platums ' + w + ' mm');
-    else if (h) parts.push('augstums ' + h + ' mm');
-    summary.textContent = 'Pieteikums: ' + parts.join(', ');
-  }
-  [veids, fW, fH].forEach(function (el) {
-    if (!el) return;
-    el.addEventListener('input', updateSummary);
-    el.addEventListener('change', updateSummary);
-  });
-  updateSummary();
-
-  /* ---------- form: inline validation, honest concept notice ------------ */
-  var frm = d.getElementById('frm');
-  var done = d.getElementById('done');
-  var again = d.getElementById('again');
-  var status = d.getElementById('frm-status');
-
-  function setErr(input, errEl, bad) {
-    if (!input || !errEl) return;
-    if (bad) { input.setAttribute('aria-invalid', 'true'); errEl.hidden = false; }
-    else { input.removeAttribute('aria-invalid'); errEl.hidden = true; }
-  }
 
   if (frm) {
-    var name = d.getElementById('f-name');
-    var tel = d.getElementById('f-tel');
-    var mail = d.getElementById('f-mail');
-    var eName = d.getElementById('e-name');
-    var eTel = d.getElementById('e-tel');
-    var eMail = d.getElementById('e-mail');
+    var name = $('#f-name'), tel = $('#f-tel'), mail = $('#f-mail'), msg = $('#f-msg');
+    var status = $('#frm-status'), done = $('#done'), doneT = $('#done-t'), doneP = $('#done-p');
     var mailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    // at least 8 digits, so "+371 2914 6306" and "29146306" both pass
-    var telOk = function (v) { return (v.replace(/\D/g, '').length >= 8); };
-
     var checks = [
-      [name, eName, function () { return !name.value.trim(); }],
-      [tel, eTel, function () { return !telOk(tel.value); }],
-      [mail, eMail, function () { return mail.value.trim() !== '' && !mailRe.test(mail.value.trim()); }]
+      [name, $('#e-name'), function () { return !name.value.trim(); }],
+      [tel, $('#e-tel'), function () { return tel.value.replace(/\D/g, '').length < 8; }],
+      [mail, $('#e-mail'), function () { return mail.value.trim() !== '' && !mailRe.test(mail.value.trim()); }]
     ];
-
+    var setErr = function (input, errEl, bad) {
+      if (!input || !errEl) return;
+      if (bad) { input.setAttribute('aria-invalid', 'true'); errEl.hidden = false; }
+      else { input.removeAttribute('aria-invalid'); errEl.hidden = true; }
+    };
     checks.forEach(function (c) {
       if (!c[0]) return;
-      c[0].addEventListener('blur', function () { setErr(c[0], c[1], c[2]()); });
-      c[0].addEventListener('input', function () {
-        if (c[0].getAttribute('aria-invalid') === 'true') setErr(c[0], c[1], c[2]());
-      });
+      c[0].addEventListener('blur', function () { if (c[0].value) setErr(c[0], c[1], c[2]()); });
+      c[0].addEventListener('input', function () { if (c[0].getAttribute('aria-invalid') === 'true') setErr(c[0], c[1], c[2]()); });
+    });
+
+    var via = 'wa';
+    $$('button[name="via"]', frm).forEach(function (b) {
+      b.addEventListener('click', function () { via = b.value; });
     });
 
     frm.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (e.submitter && e.submitter.value) via = e.submitter.value;
       var first = null;
       checks.forEach(function (c) {
-        if (!c[0]) return;
         var bad = c[2]();
         setErr(c[0], c[1], bad);
         if (bad && !first) first = c[0];
@@ -179,25 +255,106 @@
         first.focus();
         return;
       }
+      var lines = ['Labdien! Pieteikums no mājaslapas.'];
+      lines.push('Veids: ' + (veids && veids.value ? veids.value : 'nav norādīts'));
+      var st = sizeText();
+      if (st) lines.push('Izmērs: ' + st);
+      if (izvele && izvele.value) lines.push('Izvēle: ' + izvele.value);
+      lines.push('Vārds: ' + name.value.trim());
+      lines.push('Tālrunis: ' + tel.value.trim());
+      if (mail.value.trim()) lines.push('E-pasts: ' + mail.value.trim());
+      if (msg && msg.value.trim()) lines.push('Piezīmes: ' + msg.value.trim());
+      var text = lines.join('\n');
+
+      if (via === 'mail') {
+        var subj = 'Pieteikums: ' + (veids && veids.value ? veids.value : 'vārti');
+        location.href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(text);
+        if (doneT) doneT.textContent = 'Atvērām e-pasta programmu ar sagatavotu vēstuli.';
+        if (doneP) doneP.textContent = 'Pārbaudiet vēstuli un nospiediet «Sūtīt». Ja e-pasta programma neatvērās, zvaniet vai rakstiet WhatsApp.';
+      } else {
+        var w = window.open('https://wa.me/' + PHONE_WA + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
+        if (doneT) doneT.textContent = w === null ? 'WhatsApp neatvērās.' : 'Atvērām WhatsApp ar sagatavotu ziņu.';
+        if (doneP) doneP.textContent = w === null
+          ? 'Pārlūks bloķēja jaunu logu. Zvaniet vai nosūtiet pieteikumu e-pastā.'
+          : 'Pārbaudiet ziņu un nospiediet «Sūtīt». Ja WhatsApp neatvērās, zvaniet vai rakstiet e-pastu.';
+      }
       frm.hidden = true;
-      if (status) status.textContent = 'Pieteikums aizpildīts pareizi. Skatiet atbildi zemāk.';
       if (done) {
         done.hidden = false;
         done.setAttribute('tabindex', '-1');
         done.focus({ preventScroll: true });
       }
+      if (status) status.textContent = doneT ? doneT.textContent : '';
     });
+
+    var again = $('#again');
+    if (again && done) {
+      again.addEventListener('click', function () {
+        done.hidden = true;
+        frm.hidden = false;
+        if (status) status.textContent = '';
+        if (name) name.focus();
+      });
+    }
   }
 
-  if (again && frm && done) {
-    again.addEventListener('click', function () {
-      done.hidden = true;
-      frm.hidden = false;
-      frm.reset();
-      if (status) status.textContent = '';
-      updateSummary();
-      var n = d.getElementById('f-name');
-      if (n) n.focus();
+  /* ---------- paceļamie: colour, panel and options on a drawn door ---------- */
+  var pick = $('#pick');
+  if (pick) {
+    var svg = $('.pick__svg', pick);
+    var cap = $('#pick-cap');
+    var val = function (n) { var el = $('input[name="' + n + '"]:checked', pick); return el ? el : null; };
+    var render = function () {
+      var kind = val('p-veids'), col = val('p-krasa'), surf = val('p-virsma'), win = $('#p-logi', pick);
+      var pano = kind && kind.value === 'panorama';
+      svg.style.setProperty('--door', col ? col.getAttribute('data-fill') : '#383E42');
+      svg.setAttribute('data-kind', kind ? kind.value : 'parastie');
+      svg.setAttribute('data-surf', surf ? surf.value : 'rievots');
+      svg.setAttribute('data-wood', col && col.hasAttribute('data-wood') ? col.getAttribute('data-wood') : '');
+      svg.setAttribute('data-win', win && win.checked && !pano ? '1' : '');
+      $$('input[name="p-virsma"]', pick).forEach(function (i) { i.disabled = pano; });
+      if (win) win.disabled = pano;
+      var parts = [kind ? kind.getAttribute('data-label') : '', col ? col.getAttribute('data-label') : ''];
+      if (!pano && surf) parts.push(surf.getAttribute('data-label'));
+      if (!pano && win && win.checked) parts.push('ar logiem');
+      var txt = parts.filter(Boolean).join(', ');
+      if (cap) cap.textContent = txt.charAt(0).toUpperCase() + txt.slice(1);
+      return txt;
+    };
+    pick.addEventListener('change', render);
+    render();
+    var add = $('#pick-add');
+    if (add) {
+      add.addEventListener('click', function () {
+        var txt = render();
+        selectSlug('pacelamie-varti');
+        if (izvele) izvele.value = txt;
+        applySizeLabels();
+        updateSummary();
+        var target = $('#pieteikums');
+        if (target) target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        if (fW) setTimeout(function () { fW.focus({ preventScroll: true }); }, reduce ? 0 : 650);
+      });
+    }
+  }
+
+  /* ---------- automātika: pick a way to open, the drawn gate answers ---------- */
+  var ways = $('#ways');
+  if (ways) {
+    var stage = $('.ways__stage', ways);
+    var wStatus = $('#ways-status');
+    var timer = null;
+    $$('.way', ways).forEach(function (b) {
+      b.addEventListener('click', function () {
+        $$('.way', ways).forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+        clearTimeout(timer);
+        stage.classList.remove('is-open');
+        void stage.offsetWidth; // restart the animation on repeated clicks
+        stage.classList.add('is-open');
+        stage.setAttribute('data-way', b.getAttribute('data-way'));
+        if (wStatus) wStatus.textContent = b.getAttribute('data-status') || '';
+        timer = setTimeout(function () { stage.classList.remove('is-open'); }, reduce ? 2500 : 4800);
+      });
     });
   }
 })();
