@@ -394,6 +394,7 @@ button{font:inherit;color:inherit}
 
 /* ============================ PAINT & PANEL CHOOSER ===================== */
 .pick{margin-top:clamp(26px,3.2vw,44px);display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:clamp(22px,4vw,56px);align-items:start}
+.pick > *,.ways > *{min-width:0}
 .pick__stage{position:sticky;top:calc(var(--hdr-h) + 20px);background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:clamp(10px,1.6vw,18px)}
 .pick__svg{border-radius:var(--r-in)}
 .pick__svg{width:100%;height:auto}
@@ -406,6 +407,9 @@ button{font:inherit;color:inherit}
 .pick__svg[data-kind="panorama"] .g-pano{display:inline}
 .pick__svg[data-kind="panorama"] .g-grooves,.pick__svg[data-kind="panorama"] .g-win,.pick__svg[data-kind="panorama"] .g-handle{display:none}
 .pick__svg[data-kind="durvis"] .g-handle{display:none}
+.pick__svg .g-win-d{display:none}
+.pick__svg[data-kind="durvis"][data-win="1"] .g-win{display:none}
+.pick__svg[data-kind="durvis"][data-win="1"] .g-win-d{display:inline}
 .pick__cap{margin-top:12px;font:600 14px/1.45 var(--f-b);color:var(--ink);font-variant-numeric:tabular-nums}
 .pick__ctl{display:flex;flex-direction:column;gap:22px}
 .pick__ctl legend{font:700 15px/1.3 var(--f-d);letter-spacing:-.01em;margin-bottom:10px}
@@ -425,8 +429,11 @@ button{font:inherit;color:inherit}
 @media (hover:hover) and (pointer:fine){.opt label:hover{border-color:var(--ink-3)}}
 .pick__note{font-size:13.5px;color:var(--ink-3);max-width:46ch}
 @media (max-width:900px){
-  .pick{grid-template-columns:1fr}
-  .pick__stage{position:relative;top:0}
+  .pick{grid-template-columns:minmax(0,1fr)}
+  /* on phones the drawing stays under the header while the options scroll past */
+  .pick__stage{position:sticky;top:var(--hdr-h);z-index:3;padding:8px;box-shadow:0 10px 18px -14px rgba(0,0,0,.4)}
+  .pick__svg{max-height:30svh;width:auto;max-width:100%;margin:0 auto}
+  .pick__cap{margin-top:6px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 
 /* ============================ AUTOMATION: WAYS TO OPEN ================== */
@@ -444,9 +451,11 @@ button{font:inherit;color:inherit}
 .way span{font-size:13.5px;line-height:1.45;color:var(--ink-2)}
 .way[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 @media (hover:hover) and (pointer:fine){.way:hover{border-color:var(--ink-3)}}
-.ways__status{margin-top:12px;min-height:1.5em;font:600 14px/1.45 var(--f-b)}
+.ways__status{margin-top:12px;min-height:2.9em;font:600 14px/1.45 var(--f-b)}
+.ways__stage,.pick__stage{contain:layout paint}
+.ways__stage{scroll-margin-top:calc(var(--hdr-h) + 12px)}
 @media (max-width:900px){.ways{grid-template-columns:1fr}}
-@media (max-width:420px){.ways__list{grid-template-columns:1fr}}
+@media (max-width:420px){.ways__list{gap:8px}.way{padding:12px;gap:6px}.way span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
 
 
 /* ============================ FENCE TYPES =============================== */

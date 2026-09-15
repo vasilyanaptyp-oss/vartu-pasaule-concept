@@ -368,6 +368,8 @@
       svg.setAttribute('data-win', win && win.checked && !pano ? '1' : '');
       $$('input[name="p-virsma"]', pick).forEach(function (i) { i.disabled = pano; });
       if (win) win.disabled = pano;
+      var note = $('#pick-pano');
+      if (note) note.hidden = !pano;
       var parts = [kind ? kind.getAttribute('data-label') : '', col ? col.getAttribute('data-label') : ''];
       if (!pano && surf) parts.push(surf.getAttribute('data-label'));
       if (!pano && win && win.checked) parts.push('ar logiem');
@@ -394,131 +396,203 @@
   }
 
   /* ---------- automātika: pick a way to open, the drawn gate answers ---------- */
-  // One timeline per click: the device acts, the signal reaches the antenna,
-  // the lamp flashes, the gate rolls behind the fence, the car drives in,
-  // the gate closes and the car returns to the start. GSAP drives it; without
-  // GSAP (or with reduced motion) the scene just switches open and closed.
+  // One timeline per click (about 7 s): the device acts, the signal reaches the
+  // antenna, the lamp flashes, the gate rolls behind the fence, the car drives
+  // into the yard behind the gate, the gate closes in front of it, the car is
+  // parked and a new one waits on the driveway. A second click mid-way first
+  // winds the scene back smoothly. Without GSAP or with reduced motion the
+  // scene only switches between "open" and "closed".
   var ways = $('#ways');
   if (ways) {
     var wStatus = $('#ways-status');
     var buttons = $$('.way', ways);
     var S = function (id) { return $('#' + id, ways); };
+    var svgEl = $('.ways__svg', ways);
     var gate = S('w-gate'), car = S('w-car'), glow = S('w-lamp-glow'), lamp = S('w-lamp'), beam = S('w-beam'),
-      led = S('w-led'), sig = S('w-sig'), ant = S('w-ant');
+      led = S('w-led'), sig = S('w-sig'), ant = S('w-ant'), antRing = S('w-ant-ring'),
+      slotBack = S('w-slot-back'), slotFront = S('w-slot-front');
     var devs = { pults: S('dev-pults'), poga: S('dev-poga'), lietotne: S('dev-lietotne'), zvans: S('dev-zvans') };
     var G = window.gsap;
-    var tl = null, blink = null, timer = null, touched = false;
+    var tl = null, blink = null, timer = null, touched = false, shown = 'pults';
     var SHUT = 'Vārti ir aizvērti. Izvēlieties citu veidu.';
+    var OPEN_X = -252;
+    var sigLen = sig ? sig.getTotalLength() : 0;
 
-    var resetScene = function () {
-      if (tl) tl.kill();
-      if (blink) blink.kill();
-      clearTimeout(timer);
-      if (G) {
-        G.set(gate, { x: 0 });
-        G.set(car, { x: 0, y: 0, scale: 0.85, opacity: 1, svgOrigin: '436 394' });
-        G.set([glow, beam, sig], { opacity: 0 });
-        G.set(lamp, { attr: { fill: '#D39A22' } });
-        G.set(led, { attr: { fill: '#4CAF7D' } });
-      }
+    // phones: frame the gate, operator and card, drop the house
+    var narrow = window.matchMedia ? window.matchMedia('(max-width: 560px)') : null;
+    var fit = function () { if (svgEl) svgEl.setAttribute('viewBox', narrow && narrow.matches ? '150 8 610 392' : '0 0 760 400'); };
+    fit();
+    if (narrow && narrow.addEventListener) narrow.addEventListener('change', fit);
+
+    if (G) {
+      // transform origins are set once; passing svgOrigin again after a scale makes GSAP shift the element
+      // the markup carries the same .85 scale for the no-GSAP case; GSAP starts from a clean transform
+      car.removeAttribute('transform');
+      G.set(car, { svgOrigin: '436 394' });
+      G.set(car, { scale: 0.85 });
+      G.set(S('pults-btn'), { svgOrigin: '60 64' });
+      G.set(S('pults-ring'), { svgOrigin: '60 64' });
+      G.set(S('poga-btn'), { svgOrigin: '71 85' });
+      G.set(S('poga-ring'), { svgOrigin: '71 85' });
+      G.set(S('app-tap'), { svgOrigin: '71 111' });
+      G.set(antRing, { svgOrigin: '284 172' });
+    }
+
+    var lampOff = function () {
+      if (blink) { blink.kill(); blink = null; }
+      if (G) { G.set(glow, { opacity: 0 }); G.set(lamp, { attr: { fill: '#D39A22' } }); }
+      else { glow.setAttribute('opacity', '0'); lamp.setAttribute('fill', '#D39A22'); }
     };
-
-    var ring = function (t, el, origin, at) {
-      t.fromTo(el, { opacity: 1, scale: 0.8, svgOrigin: origin }, { opacity: 0, scale: 2.3, svgOrigin: origin, duration: 0.55, ease: 'power1.out' }, at);
+    var colours = function () {
+      // every colour an interrupted tween could leave behind goes back to its drawing value
+      G.set(ant, { attr: { fill: '#2A2E32' } });
+      G.set(led, { attr: { fill: '#4CAF7D' } });
+      G.set(S('pults-led'), { attr: { fill: '#5E666D' } });
+      G.set([S('poga-btn'), S('app-btn')], { attr: { fill: '#F8BB22' } });
+      G.set([S('pults-btn'), S('poga-btn')], { scale: 1 });
+      G.set([S('pults-ring'), S('poga-ring'), S('app-tap'), S('zvans-ring'), antRing, sig], { opacity: 0 });
+    };
+    var showDevice = function (t, way) {
+      if (way === shown) return;
+      t.to(devs[shown], { opacity: 0, y: -4, duration: 0.15 }, 0)
+        .fromTo(devs[way], { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.25 }, 0.1);
+      shown = way;
+    };
+    var ring = function (t, el, at) {
+      t.fromTo(el, { opacity: 1, scale: 0.8 }, { opacity: 0, scale: 2.4, duration: 0.55, ease: 'power1.out' }, at);
     };
     var deviceAction = function (t, way) {
       if (way === 'pults') {
-        t.to(S('pults-btn'), { scale: 0.72, svgOrigin: '62 72', duration: 0.12, yoyo: true, repeat: 1 }, '+=0.15');
-        ring(t, S('pults-ring'), '62 72', '<');
+        t.to(S('pults-btn'), { scale: 0.72, attr: { fill: '#E3A60F' }, duration: 0.12, yoyo: true, repeat: 1 });
+        ring(t, S('pults-ring'), '<');
         t.to(S('pults-led'), { attr: { fill: '#FFC845' }, duration: 0.08, yoyo: true, repeat: 3 }, '<');
       } else if (way === 'poga') {
-        t.to(S('poga-btn'), { scale: 0.82, svgOrigin: '73 89', attr: { fill: '#E3A60F' }, duration: 0.14, yoyo: true, repeat: 1 }, '+=0.15');
-        ring(t, S('poga-ring'), '73 89', '<');
+        t.to(S('poga-btn'), { scale: 0.84, attr: { fill: '#E3A60F' }, duration: 0.14, yoyo: true, repeat: 1 });
+        ring(t, S('poga-ring'), '<');
       } else if (way === 'lietotne') {
-        t.to(S('app-btn'), { attr: { fill: '#E3A60F' }, duration: 0.14, yoyo: true, repeat: 1 }, '+=0.15');
-        ring(t, S('app-tap'), '73 112', '<');
+        t.to(S('app-btn'), { attr: { fill: '#E3A60F' }, duration: 0.14, yoyo: true, repeat: 1 });
+        ring(t, S('app-tap'), '<');
       } else {
-        t.to(S('zvans-ring'), { opacity: 1, duration: 0.18, yoyo: true, repeat: 5, ease: 'none' });
+        t.to(S('zvans-ring'), { opacity: 1, duration: 0.16, yoyo: true, repeat: 3, ease: 'none' });
       }
+    };
+    var say = function (text) { if (wStatus && touched) wStatus.textContent = text; };
+
+    // static fallback: no GSAP or reduced motion
+    var staticPlay = function (way, auto) {
+      clearTimeout(timer);
+      Object.keys(devs).forEach(function (k) { devs[k].setAttribute('opacity', k === way ? '1' : '0'); if (G) G.set(devs[k], { opacity: k === way ? 1 : 0 }); });
+      shown = way;
+      var open = function (on) {
+        gate.setAttribute('transform', on ? 'translate(' + OPEN_X + ' 0)' : '');
+        if (G) G.set(gate, { x: on ? OPEN_X : 0 });
+        lamp.setAttribute('fill', on ? '#FFC845' : '#D39A22');
+        glow.setAttribute('opacity', on ? '.8' : '0');
+        beam.setAttribute('opacity', on ? '.9' : '0');
+        led.setAttribute('fill', on ? '#F8BB22' : '#4CAF7D');
+        if (G) G.set([lamp, glow, beam, led], { clearProps: 'opacity' });
+      };
+      open(true);
+      timer = setTimeout(function () { open(false); say(SHUT); }, 3500);
     };
 
     var play = function (way) {
-      resetScene();
-      Object.keys(devs).forEach(function (k) {
-        if (!devs[k]) return;
-        if (G) G.set(devs[k], { opacity: k === way ? 1 : 0, y: 0 }); else devs[k].setAttribute('opacity', k === way ? '1' : '0');
-      });
-      if (G) {
-        G.set([S('pults-ring'), S('poga-ring'), S('app-tap'), S('zvans-ring')], { opacity: 0 });
-        G.set([S('pults-btn'), S('poga-btn')], { scale: 1 });
-      }
-      var btn = buttons.filter(function (b) { return b.getAttribute('data-way') === way; })[0];
-      var said = btn ? btn.getAttribute('data-status') : '';
+      if (!G || reduce) { staticPlay(way); return; }
+      var gx = G.getProperty(gate, 'x');
+      var carBehind = car.parentNode === slotBack;
+      var carMoved = carBehind || Math.abs(G.getProperty(car, 'y')) > 1 || G.getProperty(car, 'opacity') < 0.99;
+      if (tl) tl.kill();
+      clearTimeout(timer);
+      lampOff();
+      colours();
 
-      if (!G || reduce) {
-        if (wStatus) wStatus.textContent = said;
-        if (G) G.set(gate, { x: -252 }); else gate.setAttribute('transform', 'translate(-252 0)');
-        timer = setTimeout(function () {
-          if (G) G.set(gate, { x: 0 }); else gate.removeAttribute('transform');
-          if (wStatus) wStatus.textContent = SHUT;
-        }, 3500);
-        return;
-      }
-
-      var len = sig.getTotalLength();
       tl = G.timeline();
-      tl.fromTo(devs[way], { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.25 });
-      deviceAction(tl, way);
-      // signal: three short dashes run from the card to the antenna
-      tl.set(sig, { opacity: 1, attr: { 'stroke-dasharray': '12 18 12 18 12 ' + len, 'stroke-dashoffset': 72 } })
-        .to(sig, { attr: { 'stroke-dashoffset': -len }, duration: 0.8, ease: 'none' })
+      // wind back whatever an earlier run left open, without jumps
+      var back = 0;
+      if (gx < -1) {
+        back = Math.max(0.35, Math.abs(gx) / -OPEN_X * 1.0);
+        tl.to(gate, { x: 0, duration: back, ease: 'power2.inOut' }, 0);
+      }
+      if (carMoved) {
+        tl.to(car, { opacity: 0, duration: 0.2 }, 0)
+          .call(function () { slotFront.appendChild(car); })
+          .set(car, { y: 26, scale: 0.85 })
+          .to(car, { y: 0, opacity: 1, duration: 0.35, ease: 'power2.out' });
+        back = Math.max(back, 0.55);
+      }
+      showDevice(tl, way);
+      var t0 = Math.max(back, 0.3);
+
+      var dev = G.timeline();
+      deviceAction(dev, way);
+      tl.add(dev, t0);
+
+      // signal: three short dashes from the device to the antenna, then the operator answers
+      tl.set(sig, { opacity: 1, attr: { 'stroke-dasharray': '12 16 12 16 12 ' + sigLen, 'stroke-dashoffset': 68 } })
+        .to(sig, { attr: { 'stroke-dashoffset': -sigLen }, duration: 0.6, ease: 'none' })
         .set(sig, { opacity: 0 })
-        .to(ant, { attr: { fill: '#F8BB22' }, duration: 0.1, yoyo: true, repeat: 1 }, '<')
-        .call(function () {
-          if (wStatus) wStatus.textContent = said;
+        .fromTo(ant, { attr: { fill: '#F8BB22' } }, { attr: { fill: '#2A2E32' }, duration: 0.3 }, '<');
+      ring(tl, antRing, '<');
+      tl.call(function () {
+          // a beacon: one second period, half lit
           blink = G.timeline({ repeat: -1 })
-            .set(lamp, { attr: { fill: '#FFC845' } }).to(glow, { opacity: 1, duration: 0.18 })
-            .to(glow, { opacity: 0.1, duration: 0.3 }).set(lamp, { attr: { fill: '#D39A22' } }).to({}, { duration: 0.12 });
+            .set(lamp, { attr: { fill: '#FFC845' } }).to(glow, { opacity: 1, duration: 0.08 })
+            .to({}, { duration: 0.42 })
+            .set(lamp, { attr: { fill: '#B8841C' } }).to(glow, { opacity: 0, duration: 0.12 })
+            .to({}, { duration: 0.38 });
         })
         .set(led, { attr: { fill: '#F8BB22' } })
-        .to(beam, { opacity: 0.9, duration: 0.2 })
-        .to(gate, { x: -252, duration: 2.6, ease: 'power2.inOut' }, '+=0.25')
-        // the car starts rolling once the gate is two thirds open
-        .to(car, { y: -96, scale: 0.4, svgOrigin: '436 394', duration: 2.1, ease: 'power1.inOut' }, '-=0.9')
-        .to(car, { opacity: 0, duration: 0.45 }, '-=0.45')
-        .to(gate, { x: 0, duration: 2.6, ease: 'power2.inOut' }, '+=0.7')
-        .to(beam, { opacity: 0, duration: 0.3 })
+        .to(beam, { opacity: 0.9, duration: 0.2 }, '<')
+        // gate: short start, steady run, soft stop
+        .to(gate, { x: -26, duration: 0.3, ease: 'power1.in' }, '+=0.1')
+        .to(gate, { x: -226, duration: 1.3, ease: 'none' })
+        .to(gate, { x: OPEN_X, duration: 0.3, ease: 'power1.out' })
+        .addLabel('opened')
+        // car: rolls to the threshold, passes under the gate line into the yard and stops by the garage
+        .to(car, { y: -94, scale: 0.62, duration: 1.2, ease: 'sine.in' }, 'opened-=1.0')
+        .call(function () { slotBack.appendChild(car); })
+        .to(car, { y: -114, scale: 0.5, duration: 0.7, ease: 'sine.out' })
+        .to(gate, { x: -226, duration: 0.3, ease: 'power1.in' }, '+=0.25')
+        .to(gate, { x: -26, duration: 1.3, ease: 'none' })
+        .to(gate, { x: 0, duration: 0.3, ease: 'power1.out' })
+        .to(beam, { opacity: 0, duration: 0.25 })
         .call(function () {
-          if (blink) blink.kill();
-          G.set(glow, { opacity: 0 });
-          G.set(lamp, { attr: { fill: '#D39A22' } });
+          lampOff();
           G.set(led, { attr: { fill: '#4CAF7D' } });
-          if (wStatus) wStatus.textContent = SHUT;
+          say(SHUT);
         })
-        .set(car, { y: 26, scale: 0.85, svgOrigin: '436 394' })
-        .to(car, { y: 0, opacity: 1, duration: 0.6, ease: 'power2.out' });
+        // the parked car fades, the next one waits on the driveway
+        .to(car, { opacity: 0, duration: 0.4 }, '+=0.3')
+        .call(function () { slotFront.appendChild(car); })
+        .set(car, { y: 26, scale: 0.85 })
+        .to(car, { y: 0, opacity: 1, duration: 0.5, ease: 'power2.out' });
     };
 
     buttons.forEach(function (b) {
       b.addEventListener('click', function () {
         touched = true;
         buttons.forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
-        play(b.getAttribute('data-way'));
+        if (wStatus) wStatus.textContent = b.getAttribute('data-status') || '';
+        // on phones the buttons sit under the scene: bring the scene back into view first
+        var stage = $('.ways__stage', ways);
+        var r = stage.getBoundingClientRect();
+        var hdrH = ($('.hdr') || stage).getBoundingClientRect().height || 68;
+        if (r.top < hdrH + 4 || r.bottom > window.innerHeight) {
+          stage.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+          setTimeout(function () { play(b.getAttribute('data-way')); }, reduce ? 0 : 350);
+        } else {
+          play(b.getAttribute('data-way'));
+        }
       });
     });
-    resetScene();
 
-    // shown once by itself when the scene first comes into view
+    // shown once by itself when the scene first comes into view (silent for screen readers)
     if (G && !reduce && 'IntersectionObserver' in window) {
       var wio = new IntersectionObserver(function (entries) {
         entries.forEach(function (en) {
           if (!en.isIntersecting) return;
           wio.disconnect();
-          setTimeout(function () {
-            if (touched) return;
-            buttons[0].setAttribute('aria-pressed', 'true');
-            play('pults');
-          }, 700);
+          setTimeout(function () { if (!touched) play('pults'); }, 700);
         });
       }, { threshold: 0.6 });
       wio.observe($('.ways__stage', ways));
