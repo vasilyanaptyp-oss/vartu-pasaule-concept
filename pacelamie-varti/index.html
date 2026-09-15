@@ -111,45 +111,50 @@
       <div class="pick__stage">
         <svg class="pick__svg" viewBox="0 0 480 330" role="img" aria-labelledby="pick-cap" data-kind="parastie" data-surf="rievots" data-win="" data-wood="" style="--door:#383E42">
   <defs>
+    <linearGradient id="pk-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E4E7EA"/><stop offset="1" stop-color="#D5D9DD"/></linearGradient>
+    <linearGradient id="pk-shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".16"/><stop offset=".45" stop-color="#FFFFFF" stop-opacity="0"/><stop offset=".55" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".16"/></linearGradient>
+    <linearGradient id="pk-eaveshadow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000000" stop-opacity=".22"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></linearGradient>
+    <linearGradient id="pk-dark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#45555F"/><stop offset="1" stop-color="#23303A"/></linearGradient>
+    <linearGradient id="pk-glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D5E0E7"/><stop offset=".6" stop-color="#9DB0BD"/><stop offset="1" stop-color="#7C909D"/></linearGradient>
+    <linearGradient id="pk-road" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A7AEB5"/><stop offset="1" stop-color="#BEC4CA"/></linearGradient>
     <filter id="grain" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.004 0.16" numOctaves="3" seed="11"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 .12  0 0 0 0 .07  0 0 0 0 .03  0 0 0 -1.5 1.0"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.0035 0.12" numOctaves="3" seed="7"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 .16  0 0 0 0 .09  0 0 0 0 .03  0 0 0 -1.6 1.05"/>
     </filter>
-    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C9D6DE"/><stop offset=".55" stop-color="#8FA3B0"/><stop offset="1" stop-color="#6F8594"/></linearGradient>
-    <clipPath id="doorclip"><rect x="60" y="50" width="360" height="260"/></clipPath>
+    <clipPath id="doorclip"><rect x="60" y="52" width="360" height="248"/></clipPath>
   </defs>
-  <rect x="0" y="0" width="480" height="330" fill="#D5D9DD"/>
-  <rect x="0" y="310" width="480" height="20" fill="#B9BFC5"/>
-  <rect x="48" y="38" width="384" height="274" fill="#8E969D"/>
+  <rect width="480" height="330" fill="url(#pk-wall)"/>
+  <g fill="#CDD2D7"><rect y="80" width="480" height="1"/><rect y="150" width="480" height="1"/><rect y="220" width="480" height="1"/></g>
+  <rect width="480" height="22" fill="#8F979E"/><rect y="22" width="480" height="4" fill="#7A8289"/>
+  <rect y="26" width="480" height="14" fill="url(#pk-eaveshadow)"/>
+  <rect x="18" y="92" width="18" height="26" rx="3" fill="#3A3F44"/><rect x="22" y="112" width="10" height="4" rx="2" fill="#F7E3A6"/>
+  <rect x="48" y="40" width="384" height="264" fill="#737B82"/>
+  <rect x="54" y="46" width="372" height="258" fill="#5C646A"/>
   <g clip-path="url(#doorclip)">
-    <rect class="pnl" x="60" y="50" width="360" height="260" style="fill:var(--door)"/>
-    <rect class="g-wood" x="60" y="50" width="360" height="260" filter="url(#grain)" opacity=".55"/>
-    <g class="g-grooves" stroke-width="1">
-      <path stroke="rgba(0,0,0,.22)" d="M60 63H420M60 76H420M60 89H420M60 102H420M60 128H420M60 141H420M60 154H420M60 167H420M60 193H420M60 206H420M60 219H420M60 232H420M60 258H420M60 271H420M60 284H420M60 297H420"/>
-      <path stroke="rgba(255,255,255,.12)" d="M60 64H420M60 77H420M60 90H420M60 103H420M60 129H420M60 142H420M60 155H420M60 168H420M60 194H420M60 207H420M60 220H420M60 233H420M60 259H420M60 272H420M60 285H420M60 298H420"/>
-    </g>
-    <g class="g-joints">
-      <path stroke="rgba(0,0,0,.45)" stroke-width="2" d="M60 115H420M60 180H420M60 245H420"/>
-      <path stroke="rgba(255,255,255,.18)" stroke-width="1" d="M60 117H420M60 182H420M60 247H420"/>
-    </g>
-    <g class="g-win">
-      <rect x="92" y="136" width="58" height="22" rx="2" fill="#26323A"/><rect x="176" y="136" width="58" height="22" rx="2" fill="#26323A"/>
-      <rect x="260" y="136" width="58" height="22" rx="2" fill="#26323A"/><rect x="344" y="136" width="58" height="22" rx="2" fill="#26323A"/>
-      <path d="M96 155l14-16M180 155l14-16M264 155l14-16M348 155l14-16" stroke="rgba(255,255,255,.25)" stroke-width="3"/>
-    </g>
+    <rect class="pnl" x="60" y="52" width="360" height="248" style="fill:var(--door)"/>
+    <rect class="g-wood" x="60" y="52" width="360" height="248" filter="url(#grain)" opacity=".7"/>
+    <g class="g-body"><rect x="60" y="52" width="360" height="62" fill="url(#pk-shade)"/><rect x="60" y="114" width="360" height="62" fill="url(#pk-shade)"/><rect x="60" y="176" width="360" height="62" fill="url(#pk-shade)"/><rect x="60" y="238" width="360" height="62" fill="url(#pk-shade)"/></g>
+    <g class="g-grooves" fill="none" stroke-width="1.2"><path stroke="#000000" stroke-opacity=".2" d="M60 67.5H420M60 83.0H420M60 98.5H420M60 129.5H420M60 145.0H420M60 160.5H420M60 191.5H420M60 207.0H420M60 222.5H420M60 253.5H420M60 269.0H420M60 284.5H420"/><path stroke="#FFFFFF" stroke-opacity=".1" d="M60 68.7H420M60 84.2H420M60 99.7H420M60 130.7H420M60 146.2H420M60 161.7H420M60 192.7H420M60 208.2H420M60 223.7H420M60 254.7H420M60 270.2H420M60 285.7H420"/></g>
+    <g class="g-joints" fill="none"><path stroke="#000000" stroke-opacity=".45" stroke-width="2" d="M60 114H420M60 176H420M60 238H420"/><path stroke="#FFFFFF" stroke-opacity=".18" stroke-width="1" d="M60 116H420M60 178H420M60 240H420"/></g>
+    <g class="g-win"><g><rect x="86" y="130" width="62" height="30" rx="4" fill="#EEF1F3"/><rect x="90" y="134" width="54" height="22" rx="2" fill="url(#pk-dark)"/><path d="M96 152l12-14" stroke="#FFFFFF" stroke-width="3" opacity=".35"/></g><g><rect x="170" y="130" width="62" height="30" rx="4" fill="#EEF1F3"/><rect x="174" y="134" width="54" height="22" rx="2" fill="url(#pk-dark)"/><path d="M180 152l12-14" stroke="#FFFFFF" stroke-width="3" opacity=".35"/></g><g><rect x="254" y="130" width="62" height="30" rx="4" fill="#EEF1F3"/><rect x="258" y="134" width="54" height="22" rx="2" fill="url(#pk-dark)"/><path d="M264 152l12-14" stroke="#FFFFFF" stroke-width="3" opacity=".35"/></g><g><rect x="338" y="130" width="62" height="30" rx="4" fill="#EEF1F3"/><rect x="342" y="134" width="54" height="22" rx="2" fill="url(#pk-dark)"/><path d="M348 152l12-14" stroke="#FFFFFF" stroke-width="3" opacity=".35"/></g></g>
     <g class="g-pano">
-      <rect x="60" y="50" width="360" height="195" style="fill:var(--door)"/>
-      <rect x="70" y="58" width="80" height="50" fill="url(#glass)"/><rect x="160" y="58" width="80" height="50" fill="url(#glass)"/><rect x="250" y="58" width="80" height="50" fill="url(#glass)"/><rect x="340" y="58" width="72" height="50" fill="url(#glass)"/>
-      <rect x="70" y="123" width="80" height="50" fill="url(#glass)"/><rect x="160" y="123" width="80" height="50" fill="url(#glass)"/><rect x="250" y="123" width="80" height="50" fill="url(#glass)"/><rect x="340" y="123" width="72" height="50" fill="url(#glass)"/>
-      <rect x="70" y="188" width="80" height="50" fill="url(#glass)"/><rect x="160" y="188" width="80" height="50" fill="url(#glass)"/><rect x="250" y="188" width="80" height="50" fill="url(#glass)"/><rect x="340" y="188" width="72" height="50" fill="url(#glass)"/>
-      <path d="M80 104l40-42M170 104l40-42M260 169l40-42M350 234l40-42" stroke="rgba(255,255,255,.35)" stroke-width="5"/>
+      <rect x="60" y="52" width="360" height="186" style="fill:var(--door)"/>
+      <rect x="60" y="52" width="360" height="186" fill="url(#pk-shade)" opacity=".5"/>
+      <rect x="70" y="60" width="78" height="50" fill="url(#pk-glass)"/><rect x="158" y="60" width="78" height="50" fill="url(#pk-glass)"/><rect x="246" y="60" width="78" height="50" fill="url(#pk-glass)"/><rect x="334" y="60" width="78" height="50" fill="url(#pk-glass)"/><rect x="70" y="120" width="78" height="50" fill="url(#pk-glass)"/><rect x="158" y="120" width="78" height="50" fill="url(#pk-glass)"/><rect x="246" y="120" width="78" height="50" fill="url(#pk-glass)"/><rect x="334" y="120" width="78" height="50" fill="url(#pk-glass)"/><rect x="70" y="180" width="78" height="50" fill="url(#pk-glass)"/><rect x="158" y="180" width="78" height="50" fill="url(#pk-glass)"/><rect x="246" y="180" width="78" height="50" fill="url(#pk-glass)"/><rect x="334" y="180" width="78" height="50" fill="url(#pk-glass)"/><path d="M84 104l34-38M96 104l18-20M260 164l34-38M348 224l34-38" stroke="#FFFFFF" stroke-width="4" opacity=".4"/>
+      <path d="M60 116H420M60 176H420" stroke="#000000" stroke-opacity=".35" stroke-width="2"/>
     </g>
     <g class="g-door">
-      <rect x="252" y="112" width="84" height="198" fill="none" stroke="#D7DBDF" stroke-width="6"/>
-      <rect x="318" y="206" width="6" height="22" rx="2" fill="#1E2226"/>
+      <rect x="258" y="104" width="76" height="196" fill="none" stroke="#C9CFD4" stroke-width="6"/>
+      <rect x="318" y="198" width="6" height="24" rx="2.5" fill="#1E2226"/><rect x="316" y="226" width="10" height="4" rx="2" fill="#1E2226"/>
+      <rect x="262" y="124" width="4" height="14" fill="#9AA1A8"/><rect x="262" y="262" width="4" height="14" fill="#9AA1A8"/>
     </g>
-    <rect class="g-handle" x="215" y="286" width="50" height="8" rx="2" fill="#1E2226"/>
+    <rect x="60" y="52" width="360" height="18" fill="url(#pk-eaveshadow)" opacity=".7"/>
+    <rect class="g-handle" x="208" y="276" width="64" height="9" rx="3" fill="#1E2226"/>
+    <rect x="60" y="296" width="360" height="4" fill="#1E2226"/>
   </g>
+  <path fill="url(#pk-road)" d="M0 304H480V330H0Z"/>
+  <path fill="none" stroke="#9AA1A8" stroke-width="1" d="M0 314H480M40 304 30 330M120 304 114 330M200 304 198 330M280 304 282 330M360 304 366 330M440 304 450 330"/>
+  <ellipse cx="240" cy="306" rx="190" ry="4" fill="#000000" opacity=".12"/>
 </svg>
         <p class="pick__cap" id="pick-cap" aria-live="polite">Standarta vārti, antracīts, RAL&nbsp;7016, rievota virsma</p>
       </div>

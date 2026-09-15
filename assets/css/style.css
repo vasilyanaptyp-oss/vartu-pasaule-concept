@@ -99,7 +99,7 @@ button{font:inherit;color:inherit}
   box-shadow:inset 0 -1px 0 rgba(138,88,4,0);transition:box-shadow .2s var(--e-out);
 }
 @media (hover:hover) and (pointer:fine){.lnk:hover{box-shadow:inset 0 -1px 0 var(--bronze)}}
-.s-p .lnk,.var__p .lnk,.kind p .lnk{display:inline;min-height:0;padding:12px 2px;margin:-12px 0;box-shadow:inset 0 -1px 0 rgba(138,88,4,.45)}
+.s-p .lnk,.var__p .lnk,.kind p .lnk{display:inline;min-height:0;padding:12px 0;margin:-12px 0;box-shadow:none;text-decoration:underline;text-decoration-color:rgba(138,88,4,.45);text-underline-offset:3px}
 
 /* ============================ BUTTONS =================================== */
 .btn{
@@ -394,7 +394,8 @@ button{font:inherit;color:inherit}
 
 /* ============================ PAINT & PANEL CHOOSER ===================== */
 .pick{margin-top:clamp(26px,3.2vw,44px);display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:clamp(22px,4vw,56px);align-items:start}
-.pick__stage{position:sticky;top:calc(var(--hdr-h) + 20px);background:#DDE1E5;border:1px solid var(--line);border-radius:var(--r);padding:clamp(14px,2.4vw,28px)}
+.pick__stage{position:sticky;top:calc(var(--hdr-h) + 20px);background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:clamp(10px,1.6vw,18px)}
+.pick__svg{border-radius:var(--r-in)}
 .pick__svg{width:100%;height:auto}
 .pick__svg .pnl{transition:fill .35s var(--e-out)}
 .pick__svg .g-wood,.pick__svg .g-grooves,.pick__svg .g-win,.pick__svg .g-door,.pick__svg .g-pano{display:none}
@@ -430,16 +431,8 @@ button{font:inherit;color:inherit}
 
 /* ============================ AUTOMATION: WAYS TO OPEN ================== */
 .ways{margin-top:clamp(26px,3.2vw,44px);display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(22px,4vw,56px);align-items:center}
-.ways__stage{position:relative;background:#DDE1E5;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.ways__stage{position:relative;background:#DDE1E5;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:0 24px 48px -36px rgba(30,42,54,.5)}
 .ways__svg{width:100%;height:auto}
-.ways__leaf{transition:transform 1.6s var(--e-io)}
-.ways__stage.is-open .ways__leaf{transform:translateX(-300px)}
-.ways__lamp{opacity:.35}
-.ways__stage.is-open .ways__lamp{animation:wBlink .5s steps(1) 0s 6}
-@keyframes wBlink{0%{opacity:1}50%{opacity:.35}}
-.ways__wave{opacity:0;transform-box:fill-box;transform-origin:center}
-.ways__stage.is-open .ways__wave{animation:wWave 1s var(--e-out) 2}
-@keyframes wWave{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(1.6)}}
 .ways__list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .way{
   display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-height:44px;width:100%;
@@ -454,16 +447,12 @@ button{font:inherit;color:inherit}
 .ways__status{margin-top:12px;min-height:1.5em;font:600 14px/1.45 var(--f-b)}
 @media (max-width:900px){.ways{grid-template-columns:1fr}}
 @media (max-width:420px){.ways__list{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){
-  .ways__leaf{transition:none}
-  .ways__stage.is-open .ways__lamp,.ways__stage.is-open .ways__wave{animation:none}
-  .ways__stage.is-open .ways__lamp{opacity:1}
-}
+
 
 /* ============================ FENCE TYPES =============================== */
 .kinds{margin-top:clamp(26px,3.2vw,44px);display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .kind{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:clamp(16px,1.8vw,24px);display:flex;flex-direction:column;gap:10px}
-.kind svg{width:100%;height:auto;max-height:92px;color:var(--steel)}
+.kind svg{width:100%;height:auto;border-radius:var(--r)}
 .kind h3{font-size:clamp(18px,1.7vw,21px);letter-spacing:-.02em}
 .kind p{font-size:14.5px;color:var(--ink-2)}
 @media (max-width:900px){.kinds{grid-template-columns:repeat(2,1fr)}}
