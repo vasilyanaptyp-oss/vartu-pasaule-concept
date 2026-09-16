@@ -625,3 +625,16 @@ button{font:inherit;color:inherit}
 .nojs-msg--err{border-left-color:#B3261E}
 .nojs-msg:target{display:block}
 .frm .btn[aria-disabled="true"]{opacity:.7;cursor:progress}
+
+/* back to the top: appears after one screen of scrolling (Andris Lembergs, 16.09) */
+.totop{
+  position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:55;
+  display:grid;place-items:center;width:48px;height:48px;padding:0;border:1px solid var(--ink);border-radius:var(--r);
+  background:var(--y);color:var(--ink);cursor:pointer;box-shadow:0 6px 18px rgba(20,23,26,.18);
+  opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .25s var(--e-out),transform .25s var(--e-out);
+}
+.totop svg{width:22px;height:22px}
+.totop.is-on{opacity:1;transform:none;pointer-events:auto}
+.totop:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+@media (hover:hover) and (pointer:fine){.totop:hover{background:var(--y-2)}}
+@media (prefers-reduced-motion:reduce){.totop{transition:none}}

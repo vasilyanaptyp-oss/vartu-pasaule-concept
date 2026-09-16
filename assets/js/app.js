@@ -24,6 +24,29 @@
     a.textContent = m;
   });
 
+  /* ---------- back to the top ---------- */
+  var totop = $('#totop');
+  if (totop) {
+    totop.hidden = false;
+    var ticking = false;
+    var sync = function () {
+      ticking = false;
+      var on = window.scrollY > window.innerHeight * 0.9;
+      totop.classList.toggle('is-on', on);
+      totop.tabIndex = on ? 0 : -1;
+    };
+    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(sync); } }, { passive: true });
+    sync();
+    totop.addEventListener('click', function (e) {
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+      // keyboard users (click without a pointer, detail 0) continue from the top of the page;
+      // after a mouse click the skip link must not pop up
+      var skip = $('.skip');
+      if (e.detail === 0 && skip) skip.focus({ preventScroll: true });
+      else totop.blur();
+    });
+  }
+
   /* ---------- mobile drawer ---------- */
   var burger = $('#burger');
   var mnav = $('#mnav');
